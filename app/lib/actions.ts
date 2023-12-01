@@ -13,6 +13,7 @@ const FormSchema = z.object({
   date: z.string(),
 });
 
+const UpdateInvoice = FormSchema.omit({ id: true, date: true });
 const CreateInvoice = FormSchema.omit({ id: true, date: true });
 
 export async function createInvoice(formData: FormData) {
@@ -33,4 +34,32 @@ export async function createInvoice(formData: FormData) {
 
   revalidatePath('/dashboard/invoices');
   redirect('/dashboard/invoices');
+}
+
+export async function updateInvoice(id: string, formData: FormData) {
+  const { customerId, amount, status } = UpdateInvoice.parse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+
+  const client = await PgClient.retrieve();
+
+  const amountInCents = amount * 100;
+
+  await client.client.query(`
+    UPDATE invoices
+    SET customer_id = '${customerId}', amount = '${amountInCents}', status = '${status}'
+    WHERE id = '${id}'
+  `);
+
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
+}
+
+export async function deleteInvoice(id: string) {
+  const client = await PgClient.retrieve();
+
+  await client.client.query(`DELETE FROM invoices WHERE id = '${id}'`);
+  revalidatePath('/dashboard/invoices');
 }
